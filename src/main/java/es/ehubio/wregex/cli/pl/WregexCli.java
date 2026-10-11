@@ -1,12 +1,12 @@
 package es.ehubio.wregex.cli.pl;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Writer;
 import java.util.List;
 import java.io.FileWriter;
-import java.io.Writer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.ArrayList;
@@ -112,8 +112,15 @@ public class WregexCli {
 			String motifToken = parser.getValue(1);
 			List<VariantResult> results = new VariantSearchRunner(motifToken).run();
 
+			// Carpeta de salida
+			File outputDir = new File("Variants_Results");
+			if (!outputDir.exists() && !outputDir.mkdirs()) {
+				System.err.println("Could not create directory: " + outputDir.getAbsolutePath());
+				System.exit(1);
+			}
+
 			// TSV completo
-			String fullName = buildOutputFileName(motifToken, "");
+			String fullName = new File(outputDir, buildOutputFileName(motifToken, "")).getPath();
 			try (Writer writer = new FileWriter(fullName)) {
 				VariantResultWriter.write(writer, results);
 			}
@@ -125,7 +132,7 @@ public class WregexCli {
 				if (!"NONE".equals(r.getEffect()))
 					withEffect.add(r);
 
-			String effectName = buildOutputFileName(motifToken, "_effects");
+			String effectName = new File(outputDir, buildOutputFileName(motifToken, "_effects")).getPath();
 			try (Writer writer = new FileWriter(effectName)) {
 				VariantResultWriter.write(writer, withEffect);
 			}

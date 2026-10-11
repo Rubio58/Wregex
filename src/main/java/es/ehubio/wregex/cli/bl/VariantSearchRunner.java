@@ -26,7 +26,7 @@ public final class VariantSearchRunner {
 
     private static final String TSV_RESOURCE   = "/clinvar_download_20260924_131330.tsv";
     private static final String FASTA_RESOURCE = "/uniprotkb_AND_model_organism_9606_2026_09_24.fasta.gz";
-    private static final int    FLANK          = 10;
+    private static final int    FLANK          = 20;
 
     private final String motif;
 
