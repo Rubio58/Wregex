@@ -8,17 +8,17 @@ import java.util.List;
 
 public final class VariantTsvReader {
 
-    private static final String SNV = "single nucleotide variant";
-    private static final String MISSENSE = "missense variant";
+    private static final String SNV        = "single nucleotide variant";
+    private static final String MISSENSE   = "missense variant";
     private static final String PATHOGENIC = "pathogenic";
-    private static final int MIN_COLUMNS = 16;
+    private static final int    MIN_COLUMNS = 16;
 
-    private static final int COL_NAME = 0;
-    private static final int COL_GENES = 1;
-    private static final int COL_CHANGE = 2;
-    private static final int COL_TYPE = 13;
-    private static final int COL_CONS = 14;
-    private static final int COL_CLASS = 15;
+    private static final int COL_NAME         = 0;
+    private static final int COL_GENES        = 1;
+    private static final int COL_VARIATION_ID = 9;
+    private static final int COL_TYPE         = 13;
+    private static final int COL_CONS         = 14;
+    private static final int COL_CLASS        = 15;
 
     private VariantTsvReader() {}
 
@@ -38,9 +38,7 @@ public final class VariantTsvReader {
             if (c[COL_CONS] == null || !c[COL_CONS].toLowerCase().contains(MISSENSE)) continue;
             if (c[COL_CLASS] == null || !c[COL_CLASS].toLowerCase().contains(PATHOGENIC)) continue;
 
-            VariantRecord r = new VariantRecord(c[COL_NAME], c[COL_GENES], c[COL_CHANGE]);
-            if (r.getProteinChanges().isEmpty()) continue;
-            records.add(r);
+            records.add(new VariantRecord(c[COL_NAME], c[COL_GENES], c[COL_VARIATION_ID]));
         }
 
         System.err.println("[VariantTsvReader] loaded " + records.size() + " variants");

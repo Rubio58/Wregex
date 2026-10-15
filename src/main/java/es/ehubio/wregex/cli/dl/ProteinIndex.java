@@ -1,30 +1,59 @@
 package es.ehubio.wregex.cli.dl;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.Reader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Set;
+import java.util.zip.GZIPInputStream;
 
+/**
+ * Índice de proteínas RefSeq, indexadas por proteinID SIN versión.
+ * Si varias versiones están presentes, se guarda la de número más alto.
+ * <p>
+ * Las versiones no se exponen: {@link ProteinEntry} guarda solo el ID sin versión.
+ */
 public final class ProteinIndex {
 
-    private static final Pattern GENE = Pattern.compile("GN=(\\S+)");
+    private final Map<String, ProteinEntry> byIdNoVersion;
 
-    private final Map<String, List<ProteinEntry>> byGene;
-
-    private ProteinIndex(Map<String, List<ProteinEntry>> byGene) {
-        this.byGene = byGene;
+    private ProteinIndex(Map<String, ProteinEntry> byIdNoVersion) {
+        this.byIdNoVersion = byIdNoVersion;
     }
 
-    public static ProteinIndex load(Reader reader) throws IOException {
-        Map<String, List<ProteinEntry>> byGene = new HashMap<>();
+    /**
+     * Carga todos los ficheros {@code *.faa.gz} de la carpeta dada, guardando
+     * solo las proteínas cuyo ID sin versión esté en {@code wantedIdsNoVersion}.
+     */
+    public static ProteinIndex loadDirectory(File dir, Set<String> wantedIdsNoVersion) throws IOException {
+        File[] files = dir.listFiles((d, n) -> n.endsWith(".faa.gz"));
+        if (files == null || files.length == 0)
+            throw new IOException("No .faa.gz files in " + dir);
+
+        Map<String, ProteinEntry> map = new HashMap<>();
+        Map<String, Integer> bestVersion = new HashMap<>();
+        int count = 0;
+
+        for (File f : files) {
+            try (Reader r = new InputStreamReader(
+                    new GZIPInputStream(new FileInputStream(f)), StandardCharsets.UTF_8)) {
+                count += loadInto(r, wantedIdsNoVersion, map, bestVersion);
+            }
+        }
+
+        System.err.println("[ProteinIndex] indexed " + count + " proteins, "
+                + map.size() + " distinct ids");
+        return new ProteinIndex(map);
+    }
+
+    private static int loadInto(Reader reader, Set<String> wanted,
+                                Map<String, ProteinEntry> map,
+                                Map<String, Integer> bestVersion) throws IOException {
         BufferedReader br = new BufferedReader(reader);
         StringBuilder seq = new StringBuilder();
         String header = null;
@@ -34,41 +63,52 @@ public final class ProteinIndex {
         while ((line = br.readLine()) != null) {
             if (line.isEmpty()) continue;
             if (line.charAt(0) == '>') {
-                if (header != null) { index(header, seq.toString(), byGene); count++; }
+                if (header != null) {
+                    if (store(header, seq.toString(), wanted, map, bestVersion)) count++;
+                }
                 header = line.substring(1);
                 seq.setLength(0);
             } else {
                 seq.append(line.trim());
             }
         }
-        if (header != null) { index(header, seq.toString(), byGene); count++; }
-
-        Comparator<ProteinEntry> order = Comparator
-                .comparing((ProteinEntry e) -> !e.isSwissProt())
-                .thenComparing(Comparator.comparingInt(ProteinEntry::length).reversed());
-        for (List<ProteinEntry> list : byGene.values()) list.sort(order);
-
-        System.err.println("[ProteinIndex] indexed " + count + " proteins, "
-                + byGene.size() + " genes");
-        return new ProteinIndex(byGene);
+        if (header != null) {
+            if (store(header, seq.toString(), wanted, map, bestVersion)) count++;
+        }
+        return count;
     }
 
-    private static void index(String header, String sequence,
-                              Map<String, List<ProteinEntry>> byGene) {
-        Matcher m = GENE.matcher(header);
-        if (!m.find()) return;
-        String gene = m.group(1).trim().toUpperCase(Locale.ROOT);
+    private static boolean store(String header, String sequence, Set<String> wanted,
+                                 Map<String, ProteinEntry> map,
+                                 Map<String, Integer> bestVersion) {
+        int space = header.indexOf(' ');
+        String idWithVersion = space < 0 ? header : header.substring(0, space);
+        int dot = idWithVersion.lastIndexOf('.');
+        if (dot < 0) return false;
 
-        String[] parts = header.split("\\|", -1);
-        String accession = (parts.length >= 3 && !parts[1].isEmpty()) ? parts[1] : null;
+        String idNoVersion = idWithVersion.substring(0, dot);
+        if (!wanted.contains(idNoVersion)) return false;
 
-        byGene.computeIfAbsent(gene, k -> new ArrayList<>())
-              .add(new ProteinEntry(header, sequence, accession));
+        int version;
+        try {
+            version = Integer.parseInt(idWithVersion.substring(dot + 1));
+        } catch (NumberFormatException e) {
+            return false;
+        }
+
+        Integer existing = bestVersion.get(idNoVersion);
+        if (existing != null && existing >= version) return false;
+
+        bestVersion.put(idNoVersion, version);
+        map.put(idNoVersion, new ProteinEntry(idNoVersion, sequence));
+        return true;
     }
 
-    public List<ProteinEntry> findByGene(String gene) {
-        if (gene == null || gene.isBlank()) return Collections.emptyList();
-        List<ProteinEntry> list = byGene.get(gene.trim().toUpperCase(Locale.ROOT));
-        return list == null ? Collections.emptyList() : list;
+    /** Devuelve la proteína o null si no está indexada. */
+    public ProteinEntry findByProteinId(String proteinId) {
+        if (proteinId == null) return null;
+        int dot = proteinId.lastIndexOf('.');
+        String idNoVersion = dot < 0 ? proteinId : proteinId.substring(0, dot);
+        return byIdNoVersion.get(idNoVersion);
     }
 }

@@ -6,14 +6,11 @@ import java.util.List;
 
 import es.ehubio.wregex.cli.bl.VariantResult;
 
-/**
- * Escribe los resultados del modo variantes como TSV.
- */
 public final class VariantResultWriter {
 
     private static final String HEADER =
-            "variant\tchange\tgene\tuniprot\tstatus\treason\twtWindow\tmutWindow"
-            + "\twtMatch\tmutMatch\twtScore\tmutScore\teffect";
+        "variant\tvariationId\tgene\tproteinId\tchange\tstatus\treason"
+        + "\twtWindow\tmutWindow\twtMatch\tmutMatch\twtScore\tmutScore\teffect";
 
     private static final String NA = "N/A";
 
@@ -30,11 +27,15 @@ public final class VariantResultWriter {
     }
 
     private static String toLine(VariantResult r) {
+        String gene = r.getVariant().getGene();
+        String change = r.getRef() == null ? NA : r.getRef().toString();
+        String proteinId = r.getRef() == null ? NA : r.getRef().getProteinId();
         return String.join("\t",
                 safe(r.getVariant().getName()),
-                safe(r.getChange().toString()),
-                safe(r.getGene()),
-                safe(r.getUniprot()),
+                safe(r.getVariant().getVariationId()),
+                safe(gene),
+                safe(proteinId),
+                safe(change),
                 safe(r.getStatus()),
                 safe(r.getReason()),
                 safe(r.getWtWindow()),
