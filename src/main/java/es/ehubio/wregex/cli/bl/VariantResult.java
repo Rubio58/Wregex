@@ -38,6 +38,10 @@ public final class VariantResult {
     public Result getWtMatch()        { return wtMatch; }
     public Result getMutMatch()       { return mutMatch; }
 
+    /** Delega al ref (o null si ref es null). */
+    public String getUniProt()     { return ref == null ? null : ref.getUniProt(); }
+    public int    getProteinSize() { return ref == null ? -1   : ref.getProteinSize(); }
+
     public String getEffect() {
         if (!"RESOLVED".equals(status)) return "NONE";
         boolean wt = wtMatch != null;

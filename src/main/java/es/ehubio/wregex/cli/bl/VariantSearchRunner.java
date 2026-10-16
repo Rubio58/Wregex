@@ -26,14 +26,16 @@ import es.ehubio.wregex.cli.dl.MotifInformation;
 import es.ehubio.wregex.cli.dl.ProteinEntry;
 import es.ehubio.wregex.cli.dl.ProteinIndex;
 import es.ehubio.wregex.cli.dl.ProteinRef;
+import es.ehubio.wregex.cli.dl.UniProtMap;
 import es.ehubio.wregex.cli.dl.VariantRecord;
 import es.ehubio.wregex.cli.dl.VariantTsvReader;
 
 public final class VariantSearchRunner {
 
     // Rutas externas hardcodeadas (temporalmente)
-    private static final String HGVS_PATH  = "/home/rubio/Downloads/hgvs4variation.txt.gz";
-    private static final String REFSEQ_DIR = "/home/rubio/Downloads/refseq_human_proteins";
+    private static final String HGVS_PATH      = "/home/rubio/Downloads/hgvs4variation.txt.gz";
+    private static final String IDMAPPING_PATH = "/home/rubio/Downloads/HUMAN_9606_idmapping_selected.tab.gz";
+    private static final String REFSEQ_DIR     = "/home/rubio/Downloads/refseq_human_proteins";
 
     // TSV embebido en el classpath
     private static final String TSV_RESOURCE = "/clinvar_download_20260924_131330.tsv";
@@ -81,10 +83,21 @@ public final class VariantSearchRunner {
             for (ProteinRef ref : hgvs.findByVariationId(r.getVariationId()))
                 proteinIds.add(ref.getProteinId());
 
-        // 5. FASTA RefSeq filtrado
+        // 5. UniProtMap
+        UniProtMap uniprotMap;
+        try (Reader r = new InputStreamReader(
+                new GZIPInputStream(new FileInputStream(IDMAPPING_PATH)),
+                StandardCharsets.UTF_8)) {
+            uniprotMap = UniProtMap.load(r, proteinIds);
+        }
+
+        // 6. FASTA RefSeq filtrado
         ProteinIndex index = ProteinIndex.loadDirectory(new File(REFSEQ_DIR), proteinIds);
 
-        // 6. Iterar
+        // 7. Enriquecer ProteinRef con uniProt y proteinSize
+        hgvs.enrich(uniprotMap, index);
+
+        // 8. Iterar
         List<VariantResult> results = new ArrayList<>();
         for (VariantRecord record : records) {
             List<ProteinRef> refs = hgvs.findByVariationId(record.getVariationId());
@@ -106,7 +119,7 @@ public final class VariantSearchRunner {
     private VariantResult process(Wregex wregex, ProteinIndex index,
                                   VariantRecord record, ProteinRef ref) {
         ProteinEntry protein = index.findByProteinId(ref.getProteinId());
-        if (protein == null) return null;   // NO_PROTEIN se omite
+        if (protein == null) return null;
 
         int pos = ref.getPosition();
         if (pos > protein.length())

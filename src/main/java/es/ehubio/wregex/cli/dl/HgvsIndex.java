@@ -32,12 +32,6 @@ public final class HgvsIndex {
         this.byVariationId = byVariationId;
     }
 
-    /**
-     * @param reader           lector del hgvs4variation.txt.gz (ya descomprimido)
-     * @param wantedVariationIds conjunto de VariationIDs que nos interesan
-     * @param discardedOut     writer donde volcar las entradas descartadas
-     *                         (puede ser null si no se quiere escribir)
-     */
     public static HgvsIndex load(Reader reader,
                                  Set<String> wantedVariationIds,
                                  Writer discardedOut) throws IOException {
@@ -82,7 +76,6 @@ public final class HgvsIndex {
                 continue;
             }
 
-            // Deduplicar por (VariationID, proteinId, wt, pos, mut)
             String key = variationId + "|" + proteinId + "|" + wt + pos + mut;
             if (!seen.add(key)) continue;
 
@@ -93,6 +86,28 @@ public final class HgvsIndex {
         System.err.println("[HgvsIndex] indexed " + byVariationId.size()
                 + " VariationIDs with protein refs");
         return new HgvsIndex(byVariationId);
+    }
+
+    /**
+     * Rellena uniProt y proteinSize en cada ProteinRef, consultando el mapa
+     * y el índice de proteínas.
+     */
+    public void enrich(UniProtMap uniprotMap, ProteinIndex proteinIndex) {
+        int withUniProt = 0;
+        int withSize = 0;
+        int total = 0;
+        for (List<ProteinRef> refs : byVariationId.values()) {
+            for (ProteinRef ref : refs) {
+                total++;
+                String up = uniprotMap.get(ref.getProteinId());
+                if (up != null) { ref.setUniProt(up); withUniProt++; }
+
+                ProteinEntry p = proteinIndex.findByProteinId(ref.getProteinId());
+                if (p != null) { ref.setProteinSize(p.length()); withSize++; }
+            }
+        }
+        System.err.println("[HgvsIndex] enriched " + total + " refs: "
+                + withUniProt + " with uniprot, " + withSize + " with size");
     }
 
     private static void writeDiscarded(Writer out, String[] c) throws IOException {

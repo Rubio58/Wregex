@@ -9,8 +9,9 @@ import es.ehubio.wregex.cli.bl.VariantResult;
 public final class VariantResultWriter {
 
     private static final String HEADER =
-        "variant\tvariationId\tgene\tproteinId\tchange\tstatus\treason"
-        + "\twtWindow\tmutWindow\twtMatch\tmutMatch\twtScore\tmutScore\teffect";
+            "variant\tvariationId\tgene\tproteinId\tuniprot\tproteinSize\tchange"
+            + "\tstatus\treason\twtWindow\tmutWindow\twtMatch\tmutMatch"
+            + "\twtScore\tmutScore\teffect";
 
     private static final String NA = "N/A";
 
@@ -27,14 +28,19 @@ public final class VariantResultWriter {
     }
 
     private static String toLine(VariantResult r) {
-        String gene = r.getVariant().getGene();
-        String change = r.getRef() == null ? NA : r.getRef().toString();
-        String proteinId = r.getRef() == null ? NA : r.getRef().getProteinId();
+        String gene        = r.getVariant().getGene();
+        String proteinId   = r.getRef() == null ? null : r.getRef().getProteinId();
+        String uniProt     = r.getUniProt();
+        String proteinSize = r.getProteinSize() < 0 ? null : String.valueOf(r.getProteinSize());
+        String change      = r.getRef() == null ? null : r.getRef().toString();
+
         return String.join("\t",
                 safe(r.getVariant().getName()),
                 safe(r.getVariant().getVariationId()),
                 safe(gene),
                 safe(proteinId),
+                safe(uniProt),
+                safe(proteinSize),
                 safe(change),
                 safe(r.getStatus()),
                 safe(r.getReason()),
