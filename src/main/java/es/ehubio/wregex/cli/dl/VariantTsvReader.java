@@ -38,7 +38,11 @@ public final class VariantTsvReader {
             if (c[COL_CONS] == null || !c[COL_CONS].toLowerCase().contains(MISSENSE)) continue;
             if (c[COL_CLASS] == null || !c[COL_CLASS].toLowerCase().contains(PATHOGENIC)) continue;
 
-            records.add(new VariantRecord(c[COL_NAME], c[COL_GENES], c[COL_VARIATION_ID]));
+            records.add(new VariantRecord(
+                    c[COL_NAME],
+                    c[COL_GENES],
+                    c[COL_VARIATION_ID],
+                    c[COL_CLASS]));
         }
 
         System.err.println("[VariantTsvReader] loaded " + records.size() + " variants");

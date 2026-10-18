@@ -9,7 +9,7 @@ import es.ehubio.wregex.cli.bl.VariantResult;
 public final class VariantResultWriter {
 
     private static final String HEADER =
-            "variant\tvariationId\tgene\tproteinId\tuniprot\tproteinSize\tchange"
+            "variant\tvariationId\tgene\tclassification\tproteinId\tuniprot\tproteinSize\tchange"
             + "\tstatus\treason\twtWindow\tmutWindow\twtMatch\tmutMatch"
             + "\twtScore\tmutScore\teffect";
 
@@ -28,16 +28,18 @@ public final class VariantResultWriter {
     }
 
     private static String toLine(VariantResult r) {
-        String gene        = r.getVariant().getGene();
-        String proteinId   = r.getRef() == null ? null : r.getRef().getProteinId();
-        String uniProt     = r.getUniProt();
-        String proteinSize = r.getProteinSize() < 0 ? null : String.valueOf(r.getProteinSize());
-        String change      = r.getRef() == null ? null : r.getRef().toString();
+        String gene           = r.getVariant().getGene();
+        String classification = r.getVariant().getClassification();
+        String proteinId      = r.getRef() == null ? null : r.getRef().getProteinId();
+        String uniProt        = r.getUniProt();
+        String proteinSize    = r.getProteinSize() < 0 ? null : String.valueOf(r.getProteinSize());
+        String change         = r.getRef() == null ? null : r.getRef().toString();
 
         return String.join("\t",
                 safe(r.getVariant().getName()),
                 safe(r.getVariant().getVariationId()),
                 safe(gene),
+                safe(classification),
                 safe(proteinId),
                 safe(uniProt),
                 safe(proteinSize),
