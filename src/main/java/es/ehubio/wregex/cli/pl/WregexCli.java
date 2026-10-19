@@ -20,9 +20,11 @@ import es.ehubio.wregex.Wregex.WregexException;
 import es.ehubio.wregex.cli.bl.SearchOptions;
 import es.ehubio.wregex.cli.bl.SearchRunner;
 import es.ehubio.wregex.cli.bl.VariantResult;
+import es.ehubio.wregex.cli.bl.VariantResultAggregator;
 import es.ehubio.wregex.cli.bl.VariantSearchRunner;
 import es.ehubio.wregex.cli.dl.MotifCatalog;
 import es.ehubio.wregex.cli.dl.ResultWriter;
+import es.ehubio.wregex.cli.bl.VariantResultAggregator;
 
 public class WregexCli {
 
@@ -84,7 +86,7 @@ public class WregexCli {
 
     private static void runVariants(String[] args) {
         ArgParser parser = new ArgParser("wregex variants",
-                "Analyze the effect of ClinVar missense pathogenic mutations on a motif");
+                "Analyze the effect of ClinVar missense mutations on a motif");
 
         Argument help = new Argument(0, 'h', "help", true);
         help.setDescription("Show this help and exit");
@@ -111,26 +113,26 @@ public class WregexCli {
 
             String motifToken = parser.getValue(1);
 
-            // Carpeta de salida
             File outputDir = new File("Variants_Results");
             if (!outputDir.exists() && !outputDir.mkdirs()) {
                 System.err.println("Could not create directory: " + outputDir.getAbsolutePath());
                 System.exit(1);
             }
 
-            // Ejecutar el pipeline
-            List<VariantResult> results = new VariantSearchRunner(motifToken, outputDir).run();
+            List<VariantResult> raw = new VariantSearchRunner(motifToken, outputDir).run();
+            List<VariantResult> collapsed = VariantResultAggregator.collapse(raw);
 
-            // TSV completo
+            // TSV completo (colapsado)
             String fullName = new File(outputDir, buildOutputFileName(motifToken, "")).getPath();
             try (Writer writer = new FileWriter(fullName)) {
-                VariantResultWriter.write(writer, results);
+                VariantResultWriter.write(writer, collapsed);
             }
-            System.out.println("Output written to " + fullName);
+            System.out.println("Output written to " + fullName
+                    + " (" + collapsed.size() + " rows, from " + raw.size() + " raw)");
 
-            // TSV solo con effect != NONE
+            // TSV de efectos (colapsado + filtrado)
             List<VariantResult> withEffect = new ArrayList<>();
-            for (VariantResult r : results)
+            for (VariantResult r : collapsed)
                 if (!"NONE".equals(r.getEffect()))
                     withEffect.add(r);
 
@@ -151,7 +153,7 @@ public class WregexCli {
             e.printStackTrace();
             System.exit(1);
         }
-    }
+}
 
     /**
      * Construye un nombre de fichero único a partir del motivo, un sufijo

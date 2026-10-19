@@ -3,8 +3,10 @@ package es.ehubio.wregex.cli.pl;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.List;
+import java.util.function.Function;
 
 import es.ehubio.wregex.cli.bl.VariantResult;
+import es.ehubio.wregex.cli.dl.ProteinRef;
 
 public final class VariantResultWriter {
 
@@ -30,20 +32,20 @@ public final class VariantResultWriter {
     private static String toLine(VariantResult r) {
         String gene           = r.getVariant().getGene();
         String classification = r.getVariant().getClassification();
-        String proteinId      = r.getRef() == null ? null : r.getRef().getProteinId();
+        String proteinIds     = joinRefs(r, ProteinRef::getProteinId, ",");
         String uniProt        = r.getUniProt();
         String proteinSize    = r.getProteinSize() < 0 ? null : String.valueOf(r.getProteinSize());
-        String change         = r.getRef() == null ? null : r.getRef().toString();
+        String changes        = joinRefs(r, ProteinRef::toString, ";");
 
         return String.join("\t",
                 safe(r.getVariant().getName()),
                 safe(r.getVariant().getVariationId()),
                 safe(gene),
                 safe(classification),
-                safe(proteinId),
+                safe(proteinIds),
                 safe(uniProt),
                 safe(proteinSize),
-                safe(change),
+                safe(changes),
                 safe(r.getStatus()),
                 safe(r.getReason()),
                 safe(r.getWtWindow()),
@@ -53,6 +55,16 @@ public final class VariantResultWriter {
                 r.getWtMatch()  == null ? NA : Double.toString(r.getWtMatch().getScore()),
                 r.getMutMatch() == null ? NA : Double.toString(r.getMutMatch().getScore()),
                 safe(r.getEffect()));
+    }
+
+    private static String joinRefs(VariantResult r, Function<ProteinRef, String> extractor, String sep) {
+        if (r.getRefs().isEmpty()) return null;
+        StringBuilder sb = new StringBuilder();
+        for (ProteinRef p : r.getRefs()) {
+            if (sb.length() > 0) sb.append(sep);
+            sb.append(extractor.apply(p));
+        }
+        return sb.toString();
     }
 
     private static String safe(String s) {

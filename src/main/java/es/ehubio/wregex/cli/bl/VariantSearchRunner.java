@@ -9,6 +9,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -102,8 +103,9 @@ public final class VariantSearchRunner {
         for (VariantRecord record : records) {
             List<ProteinRef> refs = hgvs.findByVariationId(record.getVariationId());
             if (refs.isEmpty()) {
-                results.add(new VariantResult(record, null, "SKIPPED", "NO_HGVS",
-                        "", "", null, null));
+                results.add(new VariantResult(record,
+                        Collections.<ProteinRef>emptyList(),
+                        "SKIPPED", "NO_HGVS", "", "", null, null));
                 continue;
             }
             for (ProteinRef ref : refs) {
@@ -123,12 +125,10 @@ public final class VariantSearchRunner {
 
         int pos = ref.getPosition();
         if (pos > protein.length())
-            return new VariantResult(record, ref, "SKIPPED", "OUT_OF_RANGE",
-                    "", "", null, null);
+            return single(record, ref, "SKIPPED", "OUT_OF_RANGE", "", "", null, null);
 
         if (protein.aaAt(pos) != ref.getWtAA())
-            return new VariantResult(record, ref, "SKIPPED", "WT_MISMATCH",
-                    "", "", null, null);
+            return single(record, ref, "SKIPPED", "WT_MISMATCH", "", "", null, null);
 
         int start = Math.max(1, pos - FLANK);
         int end   = Math.min(protein.length(), pos + FLANK);
@@ -144,12 +144,19 @@ public final class VariantSearchRunner {
             wtMatch  = searchBest(wregex, wt, record, ref);
             mutMatch = searchBest(wregex, mut, record, ref);
         } catch (Fasta.InvalidSequenceException e) {
-            return new VariantResult(record, ref, "SKIPPED", "WINDOW_INVALID",
-                    wt, mut, null, null);
+            return single(record, ref, "SKIPPED", "WINDOW_INVALID", wt, mut, null, null);
         }
 
-        return new VariantResult(record, ref, "RESOLVED", "",
-                wt, mut, wtMatch, mutMatch);
+        return single(record, ref, "RESOLVED", "", wt, mut, wtMatch, mutMatch);
+    }
+
+    private static VariantResult single(VariantRecord record, ProteinRef ref,
+                                        String status, String reason,
+                                        String wt, String mut,
+                                        Result wtMatch, Result mutMatch) {
+        return new VariantResult(record,
+                ref == null ? Collections.<ProteinRef>emptyList() : Collections.singletonList(ref),
+                status, reason, wt, mut, wtMatch, mutMatch);
     }
 
     private Result searchBest(Wregex wregex, String sequence,
