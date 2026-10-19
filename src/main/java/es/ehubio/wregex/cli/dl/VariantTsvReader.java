@@ -10,7 +10,6 @@ public final class VariantTsvReader {
 
     private static final String SNV        = "single nucleotide variant";
     private static final String MISSENSE   = "missense variant";
-    private static final String PATHOGENIC = "pathogenic";
     private static final int    MIN_COLUMNS = 16;
 
     private static final int COL_NAME         = 0;
@@ -36,7 +35,6 @@ public final class VariantTsvReader {
             if (c.length < MIN_COLUMNS) continue;
             if (!SNV.equalsIgnoreCase(c[COL_TYPE])) continue;
             if (c[COL_CONS] == null || !c[COL_CONS].toLowerCase().contains(MISSENSE)) continue;
-            if (c[COL_CLASS] == null || !c[COL_CLASS].toLowerCase().contains(PATHOGENIC)) continue;
 
             records.add(new VariantRecord(
                     c[COL_NAME],
